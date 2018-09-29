@@ -6,6 +6,7 @@ __pycache__/
 *.so
 
 # Distribution / packaging
+.python-version
 .Python
 env/
 build/
@@ -69,3 +70,4 @@ CTFd/uploads
 
 # CTFd Exports
 *.zip
+
