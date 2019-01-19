@@ -13,8 +13,18 @@ from CTFd.utils import ratelimit
 
 import base64
 
+from fido2.client import ClientData
+from fido2.server import Fido2Server, RelyingParty
+from fido2.ctap2 import AttestationObject, AuthenticatorData
+from fido2 import cbor
+from flask import Flask, session, request, redirect, abort
+
 auth = Blueprint('auth', __name__)
 
+credentials = []
+
+rp = RelyingParty('localhost', 'Demo server')
+server = Fido2Server(rp)
 
 @auth.route('/confirm', methods=['POST', 'GET'])
 @auth.route('/confirm/<data>', methods=['GET'])
@@ -168,10 +178,21 @@ def register():
         if name_len:
             errors.append('Pick a longer team name')
 
+
+
+
         if len(errors) > 0:
             return render_template('register.html', errors=errors, name=request.form['name'], email=request.form['email'], password=request.form['password'])
         else:
             with app.app_context():
+                registration_data = server.register_begin({
+                    'id': b'user_id',
+                    'name': 'a_user',
+                    'displayName': 'A. User',
+                    'icon': 'https://example.com/image.png'
+                }, credentials)
+                print("registartion data: ",  registration_data[0]['publicKey']['challenge'])
+
                 team = Teams(name, email.lower(), password)
                 db.session.add(team)
                 db.session.commit()
@@ -181,6 +202,13 @@ def register():
                 session['id'] = team.id
                 session['admin'] = team.admin
                 session['nonce'] = utils.sha512(os.urandom(10))
+
+                session['challenge'] = registration_data[0]['publicKey']['challenge']
+
+                response = cbor.dumps(registration_data[0])
+                navigator.credentials.create(options)
+                
+
 
                 if utils.can_send_mail() and utils.get_config('verify_emails'):  # Confirming users is enabled and we can send email.
                     logger = logging.getLogger('regs')
@@ -207,6 +235,27 @@ def register():
         return redirect(url_for('challenges.challenges_view'))
     else:
         return render_template('register.html')
+
+@auth.route('/register/complete', methods=['POST'])
+def register_complete():
+        data = cbor.loads(request.get_data())[0]
+        print("request.get_data:" ,request.get_data())
+        print(data)
+        client_data = ClientData(data['clientDataJSON'])
+        att_obj = AttestationObject(data['attestationObject'])
+        print('clientData', client_data)
+        print('AttestationObject:', att_obj)
+
+        auth_data = server.register_complete(
+            session['challenge'],
+            client_data,
+            att_obj
+        )
+
+        credentials.append(auth_data.credential_data)
+        print('REGISTERED CREDENTIAL:', auth_data.credential_data)
+        return cbor.dumps({'status': 'OK'})
+
 
 
 @auth.route('/login', methods=['POST', 'GET'])

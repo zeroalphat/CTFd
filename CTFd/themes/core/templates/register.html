@@ -4,6 +4,10 @@
 {% endblock %}
 
 {% block content %}
+<html>
+
+<script src="../static/js/cbor.js"></script>
+<body>
 <div class="jumbotron">
 	<div class="container">
 		<h1>Register</h1>
@@ -40,7 +44,7 @@
 				</div>
 				<div class="row pt-3">
 					<div class="col-md-12">
-						<button type="submit" id="submit" tabindex="5" class="btn btn-md btn-primary btn-outlined float-right">Submit</button>
+						<button type="submit" id="submit" tabindex="5" class="btn btn-md btn-primary btn-outlined float-right" onclick="">Submit</button>
 					</div>
 				</div>
 				<input type="hidden" name="nonce" value="{{ nonce }}">
@@ -48,6 +52,35 @@
 		</div>
 	</div>
 </div>
+
+<script>
+	fetch('/register', {
+		method: 'GET',
+	}).then(function(response) {
+		if(response.ok) return response.arrayBuffer();
+		throw new Eror('Error getting registaration deta!');
+	}).then(CBOR.decode).then(function(options) {
+		return navigator.credentials.create(options);
+	}).then(function(attestation) {
+		return fetch('/register/complete', {
+			method: 'POST',
+			headers: {'Content-Type': 'application/cbor'},
+			body: CBOR.encode({
+				"attestationObject": new Uint8Array(attestation.response.attestationObject);
+				"clientDataJSON": new Uint8Array(attestation.response.clientDataJSON),
+			})
+		});
+	}).then(function(response){
+		var stat = response.ok ? 'successful' : 'unsuccessful';
+		alert('Registration' + stat);
+	}, function(reason) {
+		alert(reason);
+	}).then(function() {
+		window.location = '/challenges.html';
+	});
+</script>
+</body>
+</html>
 {% endblock %}
 
 {% block scripts %}
