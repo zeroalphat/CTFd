@@ -19,12 +19,18 @@ from fido2.ctap2 import AttestationObject, AuthenticatorData
 from fido2 import cbor
 from flask import Flask, session, request, redirect, abort
 
+import os
+import util
+from context import webauthn
+from flask import jsonify
+
 auth = Blueprint('auth', __name__)
 
 credentials = []
 
 rp = RelyingParty('localhost', 'Demo server')
 server = Fido2Server(rp)
+RP_ID = 'localhost'
 
 @auth.route('/confirm', methods=['POST', 'GET'])
 @auth.route('/confirm/<data>', methods=['GET'])
@@ -203,12 +209,18 @@ def register():
                 session['admin'] = team.admin
                 session['nonce'] = utils.sha512(os.urandom(10))
 
-                session['challenge'] = registration_data[0]['publicKey']['challenge']
+                rp_name = 'localhost'
+                challenge = util.generate_challenge(32)
+                ukey = util.generate_ukey()
 
-                response = cbor.dumps(registration_data[0])
-                navigator.credentials.create(options)
-                
+                session['challenge'] = challenge
+                make_credential_options = webauthn.WebAuthnMakeCredentialOptions(
+                   challenge, rp_name, RP_ID, ukey, name, name,
+                   'https://example.com') 
 
+                print('make_credential_options', make_credential_options)
+
+                return jsonify(make_credential_options.registration_dict)
 
                 if utils.can_send_mail() and utils.get_config('verify_emails'):  # Confirming users is enabled and we can send email.
                     logger = logging.getLogger('regs')
