@@ -1,90 +1,93 @@
+
 function b64enc(buf) {
-  return base64js.fromByteArray(buf)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=/g,"");
+    return base64js.fromByteArray(buf)
+                   .replace(/\+/g, "-")
+                   .replace(/\//g, "_")
+                   .replace(/=/g, "");
 }
 
+
 function b64RawEnc(buf) {
-  return base64js.fromByteArray(buf)
-  .replace(/\+/g, "-")
-  .replace(/\//g,"_");
+    return base64js.fromByteArray(buf)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
 }
 
 function hexEncode(buf) {
-  return Array.from(buf)
-    .map(function(x) {
-      return ("0"+x.toString(16)).substr(-2);
-    })
-    .join("");
+    return Array.from(buf)
+                .map(function(x) {
+                    return ("0" + x.toString(16)).substr(-2);
+				})
+                .join("");
 }
+
 
 /**
  * REGISTRATION FUNCTIONS
  */
 
- /***
-  * Callback after registration form is submitted.
-  * @param {Event} e
-  */
+/**
+ * Callback after the registration form is submitted.
+ * @param {Event} e 
+ */
+const registerButtonCliced = async (e) => {
+    e.preventDefault();
 
-const didClickRegister = async (e) => {
-  e.preventDefault();
+    // gather the data in the form
+    const form = document.querySelector('#register-form');
+    const formData = new FormData(form);
 
-  // gather the data in the form
-  const form = document.querySelector('#register-form');
-  const formData = new FormData(form);
-  console.log(formData);
+    // post the data to the server to generate the PublicKeyCredentialCreateOptions
+    const credentialCreateOptionsFromServer = await getCredentialCreateOptionsFromServer(formData);
+    console.log(credentialCreateOptionsFromServer);
 
-  //post the data  to the server to generate the PublicKeyCredentialOptions
-  const credentialCreateOptionsFromServer = await getCredentialCreateOptionsFromServer(formData);
-  
-  if (credentialCreateOptionsFromServer.fail) {
-    return console.error("Failed to generate credential request options:", credentialCreateOptionsFromServer)
-  }
+    if (credentialCreateOptionsFromServer.fail) {
+        return console.error("Failed to generate credential request options:", credentialCreateOptionsFromServer)
+    }
 
-  //convert certain members of the PublicKeyCredentailCreateOptions into
-  //byte arrays as expected by the spec.
-  const PublicKeyCredentialOptions = transformCredentialCreateOptions(credentialCreateOptionsFromServer);
+    // convert certain members of the PublicKeyCredentialCreateOptions into
+    // byte arrays as expected by the spec.
+    const publicKeyCredentialCreateOptions = transformCredentialCreateOptions(credentialCreateOptionsFromServer);
+    console.log(publicKeyCredentialCreateOptions);
 
-  //request the authenticator(s) to create a new credenatial keypari.
-  let credenatial;
-  try {
-    credenatial = await navigator.credenatials.create({
-      publickey: PublicKeyCredentialOptions
-    });
-  } catch (err) {
-    console.error("Error creating credential.", err)
-  }
+    // request the authenticator(s) to create a new credential keypair.
+    let credential;
+    try {
+        credential = await navigator.credentials.create({
+            publicKey: publicKeyCredentialCreateOptions
+        });
+    } catch (err) {
+        console.error("Error creating credential.", err)
+    }
 
-  //we now have a new credential! We now need to encode the byte arrays
-  //in the credential into strings, for posting to our server.
-  const newAssertionForServer = TransformNewAssertionForServer(credenatial);
+    console.log(credential);
+    // we now have a new credential! We now need to encode the byte arrays
+    // in the credential into strings, for posting to our server.
+    const newAssertionForServer = transformNewAssertionForServer(credential);
 
-  //post the transformed credential data to the server for validation
-  //and storing the public key
-  let assertionValidationResponse;
-  try {
-    assertionValidationResponse = await postNewAssertionToServer(newAssertionForServer);
-  } catch(err) {
-    console.error("Server validation of credential failed.", err);
-  }
+    // post the transformed credential data to the server for validation
+    // and storing the public key
+    let assertionValidationResponse;
+    try {
+        assertionValidationResponse = await postNewAssertionToServer(newAssertionForServer);
+    } catch (err) {
+        console.error("Server validation of credential failed.", err);
+    }
 
-  if (assertionValidationResponse.fail) {
-    return console.error("Assertion validation failed:", assertionValidationResponse)
-  }
-
-  //reload the page after a successful result
-  window.location.reload();
+    if (assertionValidationResponse.fail) {
+        return console.error("Assertion validation failed:", assertionValidationResponse)
+    }
+    
+    // reload the page after a successful result
+    window.location.reload();
 }
-
 
 /**
  * Get PublicKeyCredentialRequestOptions for this user from the server
  * formData of the registration form
  * @param {FormData} formData 
  */
-const getCredentialRequestOptionsFromServer = async (formData) => {
+var getCredentialRequestOptionsFromServer = async (formData) => {
     const response = await fetch(
         "/webauthn_begin_assertion",
         {
@@ -254,7 +257,7 @@ const postNewAssertionToServer = async (credentialDataForServer) => {
     });
     
     const response = await fetch(
-        "/verify_credential_info", {
+        "/registercomplete", {
         method: "POST",
         body: formData
     });
@@ -267,7 +270,7 @@ const postNewAssertionToServer = async (credentialDataForServer) => {
  * Encodes the binary data in the assertion into strings for posting to the server.
  * @param {PublicKeyCredential} newAssertion 
  */
-const transformAssertionForServer = (newAssertion) => {
+var transformAssertionForServer = (newAssertion) => {
     const authData = new Uint8Array(newAssertion.response.authenticatorData);
     const clientDataJSON = new Uint8Array(newAssertion.response.clientDataJSON);
     const rawId = new Uint8Array(newAssertion.rawId);
@@ -308,6 +311,6 @@ const postAssertionToServer = async (assertionDataForServer) => {
 
 document.addEventListener("DOMContentLoaded", e => {
     console.log("webauthn loaded!!");
-    document.querySelector('#register').addEventListener('click', didClickRegister);
+    document.querySelector('#register').addEventListener('click',registerButtonCliced);
     //document.querySelector('#login').addEventListener('click', didClickLogin);
 });

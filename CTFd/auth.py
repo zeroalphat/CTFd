@@ -198,7 +198,6 @@ def register():
                     'displayName': 'A. User',
                     'icon': 'https://example.com/image.png'
                 }, credentials)
-                print("registartion data: ",  registration_data[0]['publicKey']['challenge'])
 
                 team = Teams(name, email.lower(), password)
                 db.session.add(team)
@@ -216,7 +215,7 @@ def register():
 
                 session['challenge'] = challenge
                 make_credential_options = webauthn.WebAuthnMakeCredentialOptions(
-                   challenge, rp_name, RP_ID, ukey, name, name,
+                   challenge, rp_name, RP_ID, ukey, team.name, team.name,
                    'https://example.com') 
 
                 print('make_credential_options', make_credential_options.registration_dict)
@@ -249,7 +248,7 @@ def register():
     else:
         return render_template('register.html')
 
-@auth.route('/register/complete', methods=['POST'])
+@auth.route('/registercomplete', methods=['POST'])
 def register_complete():
         data = cbor.loads(request.get_data())[0]
         print("request.get_data:" ,request.get_data())
