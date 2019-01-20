@@ -34,10 +34,11 @@ const didClickRegister = async (e) => {
   // gather the data in the form
   const form = document.querySelector('#register-form');
   const formData = new FormData(form);
+  console.log(formData);
 
   //post the data  to the server to generate the PublicKeyCredentialOptions
   const credentialCreateOptionsFromServer = await getCredentialCreateOptionsFromServer(formData);
-
+  
   if (credentialCreateOptionsFromServer.fail) {
     return console.error("Failed to generate credential request options:", credentialCreateOptionsFromServer)
   }
@@ -125,7 +126,7 @@ const transformCredentialRequestOptions = (credentialRequestOptionsFromServer) =
  */
 const getCredentialCreateOptionsFromServer = async (formData) => {
     const response = await fetch(
-        "/webauthn_begin_activate",
+        "/register",
         {
             method: "POST",
             body: formData

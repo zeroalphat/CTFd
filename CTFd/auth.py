@@ -188,6 +188,7 @@ def register():
 
 
         if len(errors) > 0:
+            print("error occured", errors)
             return render_template('register.html', errors=errors, name=request.form['name'], email=request.form['email'], password=request.form['password'])
         else:
             with app.app_context():
@@ -218,7 +219,7 @@ def register():
                    challenge, rp_name, RP_ID, ukey, name, name,
                    'https://example.com') 
 
-                print('make_credential_options', make_credential_options)
+                print('make_credential_options', make_credential_options.registration_dict)
 
                 return jsonify(make_credential_options.registration_dict)
 
