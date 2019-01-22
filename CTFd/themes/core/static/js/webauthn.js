@@ -257,7 +257,7 @@ const postNewAssertionToServer = async (credentialDataForServer) => {
     });
     
     const response = await fetch(
-        "/registercomplete", {
+        "/fido2/complete", {
         method: "POST",
         body: formData
     });

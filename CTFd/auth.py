@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import logging
 import os
 import re
@@ -13,24 +14,23 @@ from CTFd.utils import ratelimit
 
 import base64
 
-from fido2.client import ClientData
-from fido2.server import Fido2Server, RelyingParty
-from fido2.ctap2 import AttestationObject, AuthenticatorData
-from fido2 import cbor
-from flask import Flask, session, request, redirect, abort
 
-import os
 import util
-from context import webauthn
+import webauthn
 from flask import jsonify
+import sys
 
 auth = Blueprint('auth', __name__)
 
 credentials = []
 
-rp = RelyingParty('localhost', 'Demo server')
-server = Fido2Server(rp)
+
 RP_ID = 'localhost'
+ORIGIN = 'https://localhost:5000'
+
+# Trust anchors (trusted attestation roots) should be
+# placed in TRUST_ANCHOR_DIR.
+TRUST_ANCHOR_DIR = 'trusted_attestation_roots'
 
 @auth.route('/confirm', methods=['POST', 'GET'])
 @auth.route('/confirm/<data>', methods=['GET'])
@@ -192,30 +192,29 @@ def register():
             return render_template('register.html', errors=errors, name=request.form['name'], email=request.form['email'], password=request.form['password'])
         else:
             with app.app_context():
-                registration_data = server.register_begin({
-                    'id': b'user_id',
-                    'name': 'a_user',
-                    'displayName': 'A. User',
-                    'icon': 'https://example.com/image.png'
-                }, credentials)
-
                 team = Teams(name, email.lower(), password)
                 db.session.add(team)
                 db.session.commit()
                 db.session.flush()
 
-                session['username'] = team.name
+
+                session['username'] = name
                 session['id'] = team.id
+                session['register_username'] = name
                 session['admin'] = team.admin
                 session['nonce'] = utils.sha512(os.urandom(10))
+
 
                 rp_name = 'localhost'
                 challenge = util.generate_challenge(32)
                 ukey = util.generate_ukey()
 
                 session['challenge'] = challenge
+                session['register_ukey'] = ukey
+                username = request.form['name']
+
                 make_credential_options = webauthn.WebAuthnMakeCredentialOptions(
-                   challenge, rp_name, RP_ID, ukey, team.name, team.name,
+                   challenge, rp_name, RP_ID, ukey, username, username,
                    'https://example.com') 
 
                 print('make_credential_options', make_credential_options.registration_dict)
@@ -248,8 +247,84 @@ def register():
     else:
         return render_template('register.html')
 
-@auth.route('/registercomplete', methods=['POST'])
+@auth.route('/fido2/complete', methods=['POST'])
 def register_complete():
+
+    challenge = session['challenge']
+    ukey = session['register_ukey']
+
+    registration_response = request.form
+    print(type(request.form))
+    print(request.form)
+
+    print(type(challenge))
+
+    trust_anchor_dir = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), TRUST_ANCHOR_DIR)
+    trusted_attestation_cert_required = True
+    self_attestation_permitted = True
+    none_attestation_permitted = True
+
+
+    webauthn_registration_response = webauthn.WebAuthnRegistrationResponse(        
+        RP_ID,
+        ORIGIN,
+        registration_response,
+        challenge)  # User Verification
+
+
+
+
+    try:
+        webauthn_credential = webauthn_registration_response.verify()
+        print("webautn_credential is success!")
+    except Exception as e:
+        print("error ocuuredd", e)
+        return jsonify({'fail': 'Registration failed. Error: {}'.format(e)})
+
+
+    
+    # Step 17.
+    #
+    # Check that the credentialId is not yet registered to any other user.
+    # If registration is requested for a credential that is already registered
+    # to a different user, the Relying Party SHOULD fail this registration
+    # ceremony, or it MAY decide to accept the registration, e.g. while deleting
+    # the older registration.
+    '''
+    credential_id_exists = User.query.filter_by(
+        credential_id=webauthn_credential.credential_id).first()
+    if credential_id_exists:
+        return make_response(
+            jsonify({
+                'fail': 'Credential ID already exists.'
+            }), 401)
+
+    existing_user = User.query.filter_by(username=username).first()
+    if not existing_user:
+        if sys.version_info >= (3, 0):
+            webauthn_credential.credential_id = str(
+                webauthn_credential.credential_id, "utf-8")
+        user = User(
+            ukey=ukey,
+            username=username,
+            display_name=display_name,
+            pub_key=webauthn_credential.public_key,
+            credential_id=webauthn_credential.credential_id,
+            sign_count=webauthn_credential.sign_count,
+            rp_id=RP_ID,
+            icon_url='https://example.com')
+        db.session.add(user)
+        db.session.commit()
+    else:
+        return make_response(jsonify({'fail': 'User already exists.'}), 401)
+    '''
+
+    #flash('Successfully registered as {}.'.format(username))
+
+    return jsonify({'success': 'User successfully registered.'})
+
+    '''
         data = cbor.loads(request.get_data())[0]
         print("request.get_data:" ,request.get_data())
         print(data)
@@ -267,7 +342,8 @@ def register_complete():
         credentials.append(auth_data.credential_data)
         print('REGISTERED CREDENTIAL:', auth_data.credential_data)
         return cbor.dumps({'status': 'OK'})
-
+           
+    '''
 
 
 @auth.route('/login', methods=['POST', 'GET'])

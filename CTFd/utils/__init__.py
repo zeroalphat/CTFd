@@ -190,6 +190,7 @@ def init_utils(app):
 
             db.session.close()
 
+    # before reqeust is abort
     @app.before_request
     def csrf():
         try:
@@ -200,9 +201,11 @@ def init_utils(app):
             return
         if not session.get('nonce'):
             session['nonce'] = sha512(os.urandom(10))
+        '''
         if request.method == "POST":
             if session['nonce'] != request.form.get('nonce'):
                 abort(403)
+        '''
 
     @app.before_request
     def disable_jinja_cache():
