@@ -208,8 +208,7 @@ def register():
                 '''
 
                 rp_name = 'localhost'
-                #challenge = util.generate_challenge(32)
-                challenge = 'oufYjlFR6TAmesXFQXqUG1aOw7uyEQZu'
+                challenge = util.generate_challenge(32)
                 ukey = util.generate_ukey()
 
                 session['challenge'] = challenge
@@ -253,10 +252,9 @@ def register():
 @auth.route('/fido2/complete', methods=['POST'])
 def register_complete():
 
-    challenge = 'oufYjlFR6TAmesXFQXqUG1aOw7uyEQZu'
-    #ukey = session['register_ukey']
+    challenge = session['challenge']
+    ukey = session['register_ukey']
 
-    print(challenge)
     registration_response = request.form
 
     trust_anchor_dir = os.path.join(
@@ -323,6 +321,7 @@ def register_complete():
     #flash('Successfully registered as {}.'.format(username))
 
     return jsonify({'success': 'User successfully registered.'})
+    #return redirect(url_for('challenges.challenges_view'))
 
     '''
         data = cbor.loads(request.get_data())[0]
@@ -371,6 +370,15 @@ def login():
                 session['admin'] = team.admin
                 session['nonce'] = utils.sha512(os.urandom(10))
                 db.session.close()
+
+                if 'challenge' in session:
+                    del session['challenge']
+                
+
+                
+                webauthn_user = webauthn.WebAuthnUser(
+                    
+                )
 
                 logger.warn("[{date}] {ip} - {username} logged in".format(
                     date=time.strftime("%m/%d/%Y %X"),
