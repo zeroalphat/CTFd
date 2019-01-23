@@ -88,7 +88,7 @@ const didClickRegister = async (e) => {
  */
 const getCredentialRequestOptionsFromServer = async (formData) => {
     const response = await fetch(
-        "/webauthn_begin_assertion",
+        "/login",
         {
             method: "POST",
             body: formData
@@ -310,7 +310,8 @@ const postAssertionToServer = async (assertionDataForServer) => {
 
 
 document.addEventListener("DOMContentLoaded", e => {
-    document.querySelector('#register').addEventListener('click', didClickRegister);
     document.querySelector('#login').addEventListener('click', didClickLogin);
+    document.querySelector('#register').addEventListener('click', didClickRegister);
+
 });
 
