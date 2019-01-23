@@ -1,11 +1,9 @@
-
 function b64enc(buf) {
     return base64js.fromByteArray(buf)
                    .replace(/\+/g, "-")
                    .replace(/\//g, "_")
                    .replace(/=/g, "");
 }
-
 
 function b64RawEnc(buf) {
     return base64js.fromByteArray(buf)
@@ -30,7 +28,7 @@ function hexEncode(buf) {
  * Callback after the registration form is submitted.
  * @param {Event} e 
  */
-const registerButtonCliced = async (e) => {
+const didClickRegister = async (e) => {
     e.preventDefault();
 
     // gather the data in the form
@@ -39,8 +37,9 @@ const registerButtonCliced = async (e) => {
 
     // post the data to the server to generate the PublicKeyCredentialCreateOptions
     const credentialCreateOptionsFromServer = await getCredentialCreateOptionsFromServer(formData);
+    
     console.log(credentialCreateOptionsFromServer);
-
+    
     if (credentialCreateOptionsFromServer.fail) {
         return console.error("Failed to generate credential request options:", credentialCreateOptionsFromServer)
     }
@@ -87,7 +86,7 @@ const registerButtonCliced = async (e) => {
  * formData of the registration form
  * @param {FormData} formData 
  */
-var getCredentialRequestOptionsFromServer = async (formData) => {
+const getCredentialRequestOptionsFromServer = async (formData) => {
     const response = await fetch(
         "/webauthn_begin_assertion",
         {
@@ -127,6 +126,7 @@ const transformCredentialRequestOptions = (credentialRequestOptionsFromServer) =
  * formData of the registration form
  * @param {FormData} formData 
  */
+//https://localhost:4000/fido2/complete
 const getCredentialCreateOptionsFromServer = async (formData) => {
     const response = await fetch(
         "/register",
@@ -270,7 +270,7 @@ const postNewAssertionToServer = async (credentialDataForServer) => {
  * Encodes the binary data in the assertion into strings for posting to the server.
  * @param {PublicKeyCredential} newAssertion 
  */
-var transformAssertionForServer = (newAssertion) => {
+const transformAssertionForServer = (newAssertion) => {
     const authData = new Uint8Array(newAssertion.response.authenticatorData);
     const clientDataJSON = new Uint8Array(newAssertion.response.clientDataJSON);
     const rawId = new Uint8Array(newAssertion.rawId);
@@ -310,7 +310,7 @@ const postAssertionToServer = async (assertionDataForServer) => {
 
 
 document.addEventListener("DOMContentLoaded", e => {
-    console.log("webauthn loaded!!");
-    document.querySelector('#register').addEventListener('click',registerButtonCliced);
-    //document.querySelector('#login').addEventListener('click', didClickLogin);
+    document.querySelector('#register').addEventListener('click', didClickRegister);
+    document.querySelector('#login').addEventListener('click', didClickLogin);
 });
+

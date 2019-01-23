@@ -22,11 +22,11 @@ import sys
 
 auth = Blueprint('auth', __name__)
 
-credentials = []
+
 
 
 RP_ID = 'localhost'
-ORIGIN = 'https://localhost:5000'
+ORIGIN = 'https://localhost:4000'
 
 # Trust anchors (trusted attestation roots) should be
 # placed in TRUST_ANCHOR_DIR.
@@ -157,6 +157,7 @@ def register():
         return redirect(url_for('auth.login'))
     if request.method == 'POST':
         errors = []
+        '''
         name = request.form['name']
         email = request.form['email']
         password = request.form['password']
@@ -184,7 +185,7 @@ def register():
         if name_len:
             errors.append('Pick a longer team name')
 
-
+        '''
 
 
         if len(errors) > 0:
@@ -192,21 +193,23 @@ def register():
             return render_template('register.html', errors=errors, name=request.form['name'], email=request.form['email'], password=request.form['password'])
         else:
             with app.app_context():
+                '''
                 team = Teams(name, email.lower(), password)
                 db.session.add(team)
                 db.session.commit()
                 db.session.flush()
-
+                
 
                 session['username'] = name
                 session['id'] = team.id
                 session['register_username'] = name
                 session['admin'] = team.admin
                 session['nonce'] = utils.sha512(os.urandom(10))
-
+                '''
 
                 rp_name = 'localhost'
-                challenge = util.generate_challenge(32)
+                #challenge = util.generate_challenge(32)
+                challenge = 'oufYjlFR6TAmesXFQXqUG1aOw7uyEQZu'
                 ukey = util.generate_ukey()
 
                 session['challenge'] = challenge
@@ -250,14 +253,11 @@ def register():
 @auth.route('/fido2/complete', methods=['POST'])
 def register_complete():
 
-    challenge = session['challenge']
-    ukey = session['register_ukey']
+    challenge = 'oufYjlFR6TAmesXFQXqUG1aOw7uyEQZu'
+    #ukey = session['register_ukey']
 
+    print(challenge)
     registration_response = request.form
-    print(type(request.form))
-    print(request.form)
-
-    print(type(challenge))
 
     trust_anchor_dir = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), TRUST_ANCHOR_DIR)
