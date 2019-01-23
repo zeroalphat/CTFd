@@ -257,7 +257,7 @@ def register_complete():
 
     challenge = session['challenge']
     ukey = session['register_ukey']
-    name = session['username'] 
+    username = session['username'] 
     email = session['email']
     registration_response = request.form
 
@@ -300,22 +300,6 @@ def register_complete():
                 'fail': 'Credential ID already exists.'
             }), 401)
 
-    user = User(
-        ukey=ukey,
-        username=name,
-        display_name=name,
-        pub_key=webauthn_credential.public_key,
-        credential_id=webauthn_credential.credential_id,
-        sign_count=webauthn_credential.sign_count,
-        rp_id=RP_ID,
-        icon_url='https://example.com'    
-    )
-
-    db.session.add(user)
-    db.session.commit()
-    db.session.flush()
-
-    '''
     existing_user = User.query.filter_by(username=username).first()
     if not existing_user:
         if sys.version_info >= (3, 0):
@@ -324,7 +308,7 @@ def register_complete():
         user = User(
             ukey=ukey,
             username=username,
-            display_name=display_name,
+            display_name=username,
             pub_key=webauthn_credential.public_key,
             credential_id=webauthn_credential.credential_id,
             sign_count=webauthn_credential.sign_count,
@@ -334,7 +318,7 @@ def register_complete():
         db.session.commit()
     else:
         return make_response(jsonify({'fail': 'User already exists.'}), 401)
-    '''
+    
 
     #flash('Successfully registered as {}.'.format(username))
 
@@ -363,15 +347,46 @@ def register_complete():
     '''
 
 
+
 @auth.route('/login', methods=['POST', 'GET'])
 @ratelimit(method="POST", limit=10, interval=5)
 def login():
     logger = logging.getLogger('logins')
     if request.method == 'POST':
         errors = []
-        name = request.form['name']
+        username = request.form['name']
+
+        if not util.validate_username(username):
+            return make_response(jsonify({'fail': 'Invalid username'}), 401)
+        
+        user = User.query.filter_by(username=username).first()
+
+        if not user:
+            return make_response(jsonify({'fail': 'User does not exits'}), 401)
+        if not user.credential_id:
+            return make_response(jsonify({'fail': 'Unknown credential ID.'}), 401)
+
+        if 'challenge' in session:
+            del session['challenge']
+        
+        challenge = util.generate_challenge(32)
+        session['challenge'] = challenge
+
+        
+        webauthn_user = webauthn.WebAuthnUser(
+            user.ukey, user.username, user.display_name, user.icon_url,
+            user.credential_id, user.pub_key, user.sign_count, user.rp_id)
+
+        webauthn_assertion_options = webauthn.WebAuthnAssertionOptions(
+            webauthn_user, challenge)
+
+        print(webauthn_assertion_options.assertion_dict)
+
+        return jsonify(webauthn_assertion_options.assertion_dict)
+        
 
         # Check if the user submitted an email address or a team name
+        '''
         if utils.check_email_format(name) is True:
             team = Teams.query.filter_by(email=name).first()
         else:
@@ -426,11 +441,47 @@ def login():
             errors.append("Your username or password is incorrect")
             db.session.close()
             return render_template('login.html', errors=errors)
-
+        '''
     else:
         db.session.close()
         return render_template('login.html')
 
+
+@app.route('/verify_assertion', methods=['POST'])
+def verify_assertion():
+    challenge = session.get('challenge')
+    assertion_response = request.form
+    credential_id = assertion_response.get('id')
+
+    user = User.query.filter_by(credential_id=credential_id).first()
+    if not user:
+        return make_response(jsonify({'fail': 'User does not exist.'}), 401)
+
+    webauthn_user = webauthn.WebAuthnUser(
+        user.ukey, user.username, user.display_name, user.icon_url,
+        user.credential_id, user.pub_key, user.sign_count, user.rp_id)
+
+    webauthn_assertion_response = webauthn.WebAuthnAssertionResponse(
+        webauthn_user,
+        assertion_response,
+        challenge,
+        ORIGIN,
+        uv_required=False)
+
+    try:
+        sign_count = webauthn_assertion_response.verify()
+    except Exception as e:
+        return jsonify({'fail': 'Assertion failed. Error: {}'.format(e)})
+
+    #Update counter
+    user.sign_count = sign_count
+    db.session.add(user)
+    db.session.commit()
+
+    return jsonify({
+        'success':
+        'Successfully authenticated as {}'.format(user.username)
+    })
 
 @auth.route('/logout')
 def logout():
