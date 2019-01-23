@@ -10,6 +10,7 @@ from passlib.hash import bcrypt_sha256
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.sql.expression import union_all
 
+from flask_login import UserMixin
 
 def sha512(string):
     return str(hashlib.sha512(string).hexdigest())
@@ -150,6 +151,21 @@ class Keys(db.Model):
         return "<Flag {0} for challenge {1}>".format(self.flag, self.chal)
 
 
+class User(db.Model, UserMixin):
+    id = db.Column(db.Integer, primary_key=True)
+
+    ukey = db.Column(db.String(20), unique=True, nullable=False)
+    credential_id = db.Column(db.String(250), unique=True, nullable=False)
+    display_name = db.Column(db.String(160), unique=False, nullable=False)
+    pub_key = db.Column(db.String(65), unique=True, nullable=True)
+    sign_count = db.Column(db.Integer, default=0)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    rp_id = db.Column(db.String(253), nullable=False)
+    icon_url = db.Column(db.String(2083), nullable=False)
+
+    def __repr__(self):
+        return '<User %r %r>' % (self.display_name, self.username)
+
 class Teams(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(128), unique=True)
@@ -164,20 +180,13 @@ class Teams(db.Model):
     admin = db.Column(db.Boolean, default=False)
     joined = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
-    ukey = db.Column(db.String(20), unique=True, nullable=False)
-    credential_id = db.Column(db.String(250), unique=True, nullable=False)
-    display_name = db.Column(db.String(160), unique=False, nullable=False)
-    pub_key = db.Column(db.String(65), unique=True, nullable=True)
-    sign_count = db.Column(db.Integer, default=0)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    rp_id = db.Column(db.String(253), nullable=False)
-    icon_url = db.Column(db.String(2083), nullable=False)
+
 
 
     def __init__(self, name, email, password):
         self.name = name
         self.email = email
-        self.password = bcrypt_sha256.encrypt(str(password))
+        #self.password = bcrypt_sha256.encrypt(str(password))
 
     def __repr__(self):
         return '<team %r>' % self.name

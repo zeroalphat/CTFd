@@ -11,10 +11,10 @@ from passlib.hash import bcrypt_sha256
 from CTFd.models import db, Teams
 from CTFd import utils
 from CTFd.utils import ratelimit
-
+from flask import make_response
 import base64
 
-
+from CTFd.models import User
 import util
 import webauthn
 from flask import jsonify
@@ -157,11 +157,11 @@ def register():
         return redirect(url_for('auth.login'))
     if request.method == 'POST':
         errors = []
-        '''
+        
         name = request.form['name']
         email = request.form['email']
         password = request.form['password']
-
+        '''
         name_len = len(name) == 0
         names = Teams.query.add_columns('name', 'id').filter_by(name=name).first()
         emails = Teams.query.add_columns('email', 'id').filter_by(email=email).first()
@@ -193,19 +193,22 @@ def register():
             return render_template('register.html', errors=errors, name=request.form['name'], email=request.form['email'], password=request.form['password'])
         else:
             with app.app_context():
-                '''
+                
+
+                '''    
                 team = Teams(name, email.lower(), password)
                 db.session.add(team)
                 db.session.commit()
                 db.session.flush()
-                
+                '''
 
                 session['username'] = name
-                session['id'] = team.id
+                #session['id'] = team.id
                 session['register_username'] = name
-                session['admin'] = team.admin
+                #session['admin'] = team.admin
                 session['nonce'] = utils.sha512(os.urandom(10))
-                '''
+                session['email'] =email.lower()
+                
 
                 rp_name = 'localhost'
                 challenge = util.generate_challenge(32)
@@ -254,7 +257,8 @@ def register_complete():
 
     challenge = session['challenge']
     ukey = session['register_ukey']
-
+    name = session['username'] 
+    email = session['email']
     registration_response = request.form
 
     trust_anchor_dir = os.path.join(
@@ -269,8 +273,6 @@ def register_complete():
         ORIGIN,
         registration_response,
         challenge)  # User Verification
-
-
 
 
     try:
@@ -289,7 +291,7 @@ def register_complete():
     # to a different user, the Relying Party SHOULD fail this registration
     # ceremony, or it MAY decide to accept the registration, e.g. while deleting
     # the older registration.
-    '''
+    
     credential_id_exists = User.query.filter_by(
         credential_id=webauthn_credential.credential_id).first()
     if credential_id_exists:
@@ -298,6 +300,22 @@ def register_complete():
                 'fail': 'Credential ID already exists.'
             }), 401)
 
+    user = User(
+        ukey=ukey,
+        username=name,
+        display_name=name,
+        pub_key=webauthn_credential.public_key,
+        credential_id=webauthn_credential.credential_id,
+        sign_count=webauthn_credential.sign_count,
+        rp_id=RP_ID,
+        icon_url='https://example.com'    
+    )
+
+    db.session.add(user)
+    db.session.commit()
+    db.session.flush()
+
+    '''
     existing_user = User.query.filter_by(username=username).first()
     if not existing_user:
         if sys.version_info >= (3, 0):
@@ -375,7 +393,7 @@ def login():
                     del session['challenge']
                 
 
-                
+
                 webauthn_user = webauthn.WebAuthnUser(
                     
                 )
