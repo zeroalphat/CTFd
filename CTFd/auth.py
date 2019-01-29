@@ -161,7 +161,7 @@ def register():
         name = request.form['name']
         email = request.form['email']
         password = request.form['password']
-        '''
+        
         name_len = len(name) == 0
         names = Teams.query.add_columns('name', 'id').filter_by(name=name).first()
         emails = Teams.query.add_columns('email', 'id').filter_by(email=email).first()
@@ -170,6 +170,7 @@ def register():
         valid_email = utils.check_email_format(request.form['email'])
         team_name_email_check = utils.check_email_format(name)
 
+        '''
         if not valid_email:
             errors.append("Please enter a valid email address")
         if names:
@@ -194,13 +195,11 @@ def register():
         else:
             with app.app_context():
                 
-
-                '''    
                 team = Teams(name, email.lower(), password)
                 db.session.add(team)
                 db.session.commit()
                 db.session.flush()
-                '''
+                
 
                 session['username'] = name
                 #session['id'] = team.id
