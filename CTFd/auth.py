@@ -468,6 +468,8 @@ def verify_assertion():
         ORIGIN,
         uv_required=False)
 
+    session['id'] = assertion_response.get('id')
+
     try:
         sign_count = webauthn_assertion_response.verify()
     except Exception as e:
@@ -482,6 +484,13 @@ def verify_assertion():
         'success':
         'Successfully authenticated as {}'.format(user.username)
     })
+
+@app.route('/lastlogin', methods=['POST'])
+def lastlogin():
+    session['nonce'] = utils.sha512(os.urandom(10))
+    if request.args.get('next') and utils.is_safe_url(request.args.get('next')):
+        return redirect(request.args.get('next'))
+    return redirect(url_for('challenges.challenges_view'))
 
 @auth.route('/logout')
 def logout():

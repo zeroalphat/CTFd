@@ -218,7 +218,14 @@ const didClickLogin = async (e) => {
         return console.error("Error when validating assertion on server:", response);
     }
 
-    window.location.reload();
+    let login;
+    try{
+        login = await postLastLogin();
+    } catch (err) {
+        return console.error("Error when validating assertion on server", err);
+    }
+
+    window.location.assign('/challenges');
 };
 
 /**
@@ -308,10 +315,20 @@ const postAssertionToServer = async (assertionDataForServer) => {
     return body;
 }
 
+const postLastLogin = async (assertionDataForServer) => {
+    const formData = new FormData();
+    
+    const response = await fetch(
+        "/lastlogin", {
+            method: "POST"
+        });
+    
+        const body = await response.text();
+        return body;
+}
+
 
 document.addEventListener("DOMContentLoaded", e => {
-    document.querySelector('#login').addEventListener('click', didClickLogin);
     document.querySelector('#register').addEventListener('click', didClickRegister);
-
 });
 
