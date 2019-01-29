@@ -195,7 +195,7 @@ def register():
         else:
             with app.app_context():
                 
-                team = Teams(name, email.lower(), password)
+                team = Teams(name, email.lower())
                 db.session.add(team)
                 db.session.commit()
                 db.session.flush()
@@ -383,18 +383,19 @@ def login():
 
         print(webauthn_assertion_options.assertion_dict)
 
-        return jsonify(webauthn_assertion_options.assertion_dict)
+
         
 
         # Check if the user submitted an email address or a team name
-        '''
-        if utils.check_email_format(name) is True:
-            team = Teams.query.filter_by(email=name).first()
+        
+        if utils.check_email_format(username) is True:
+            team = Teams.query.filter_by(email=username).first()
         else:
-            team = Teams.query.filter_by(name=name).first()
+            team = Teams.query.filter_by(name=username).first()
 
+        # and bcrypt_sha256.verify(request.form['password'], team.password)
         if team:
-            if team and bcrypt_sha256.verify(request.form['password'], team.password):
+            if team :
                 try:
                     session.regenerate()  # NO SESSION FIXATION FOR YOU
                 except:
@@ -404,14 +405,11 @@ def login():
                 session['admin'] = team.admin
                 session['nonce'] = utils.sha512(os.urandom(10))
                 db.session.close()
-
-                if 'challenge' in session:
-                    del session['challenge']
                 
 
-
-                webauthn_user = webauthn.WebAuthnUser(
-                    
+                return jsonify(webauthn_assertion_options.assertion_dict)
+                
+                webauthn_user = webauthn.WebAuthnUser(    
                 )
 
                 logger.warn("[{date}] {ip} - {username} logged in".format(
@@ -442,7 +440,6 @@ def login():
             errors.append("Your username or password is incorrect")
             db.session.close()
             return render_template('login.html', errors=errors)
-        '''
     else:
         db.session.close()
         return render_template('login.html')
@@ -469,7 +466,7 @@ def verify_assertion():
         ORIGIN,
         uv_required=False)
 
-    session['id'] = assertion_response.get('id')
+    #session['id'] = assertion_response.get('id')
 
     try:
         sign_count = webauthn_assertion_response.verify()
