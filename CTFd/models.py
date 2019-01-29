@@ -183,7 +183,7 @@ class Teams(db.Model):
 
 
 
-    def __init__(self, name, email, password):
+    def __init__(self, name, email):
         self.name = name
         self.email = email
         #self.password = bcrypt_sha256.encrypt(str(password))
