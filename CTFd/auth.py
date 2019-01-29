@@ -202,11 +202,13 @@ def register():
                 
 
                 session['username'] = name
-                #session['id'] = team.id
+                session['id'] = team.id
                 session['register_username'] = name
-                #session['admin'] = team.admin
+                session['admin'] = team.admin
                 session['nonce'] = utils.sha512(os.urandom(10))
                 session['email'] =email.lower()
+
+
                 
 
                 rp_name = 'localhost'
