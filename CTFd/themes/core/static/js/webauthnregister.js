@@ -77,6 +77,13 @@ const didClickRegister = async (e) => {
         return console.error("Assertion validation failed:", assertionValidationResponse)
     }
     
+    let login;
+    try{
+        login = await postLastLogin();
+    } catch (err) {
+        return console.error("Error when validating assertion on server", err);
+    }
+    
     // reload the page after a successful result
     window.location.assign('/challenges');
 }
