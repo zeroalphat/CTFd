@@ -34,49 +34,51 @@ const didClickRegister = async (e) => {
     // gather the data in the form
     const form = document.querySelector('#register-form');
     const formData = new FormData(form);
-
     // post the data to the server to generate the PublicKeyCredentialCreateOptions
     const credentialCreateOptionsFromServer = await getCredentialCreateOptionsFromServer(formData);
     
     console.log(credentialCreateOptionsFromServer);
     
-    if (credentialCreateOptionsFromServer.fail) {
-        return console.error("Failed to generate credential request options:", credentialCreateOptionsFromServer)
+    // check not password authentication
+    if (!credentialCreateOptionsFromServer.result) {
+        if (credentialCreateOptionsFromServer.fail) {
+            return console.error("Failed to generate credential request options:", credentialCreateOptionsFromServer)
+        }
+
+        // convert certain members of the PublicKeyCredentialCreateOptions into
+        // byte arrays as expected by the spec.
+        const publicKeyCredentialCreateOptions = transformCredentialCreateOptions(credentialCreateOptionsFromServer);
+        console.log(publicKeyCredentialCreateOptions);
+
+        // request the authenticator(s) to create a new credential keypair.
+        let credential;
+        try {
+            credential = await navigator.credentials.create({
+                publicKey: publicKeyCredentialCreateOptions
+            });
+        } catch (err) {
+            console.error("Error creating credential.", err)
+        }
+
+        console.log(credential);
+        // we now have a new credential! We now need to encode the byte arrays
+        // in the credential into strings, for posting to our server.
+        const newAssertionForServer = transformNewAssertionForServer(credential);
+
+        // post the transformed credential data to the server for validation
+        // and storing the public key
+        let assertionValidationResponse;
+        try {
+            assertionValidationResponse = await postNewAssertionToServer(newAssertionForServer);
+        } catch (err) {
+            console.error("Server validation of credential failed.", err);
+        }
+
+        if (assertionValidationResponse.fail) {
+            return console.error("Assertion validation failed:", assertionValidationResponse)
+        }
     }
 
-    // convert certain members of the PublicKeyCredentialCreateOptions into
-    // byte arrays as expected by the spec.
-    const publicKeyCredentialCreateOptions = transformCredentialCreateOptions(credentialCreateOptionsFromServer);
-    console.log(publicKeyCredentialCreateOptions);
-
-    // request the authenticator(s) to create a new credential keypair.
-    let credential;
-    try {
-        credential = await navigator.credentials.create({
-            publicKey: publicKeyCredentialCreateOptions
-        });
-    } catch (err) {
-        console.error("Error creating credential.", err)
-    }
-
-    console.log(credential);
-    // we now have a new credential! We now need to encode the byte arrays
-    // in the credential into strings, for posting to our server.
-    const newAssertionForServer = transformNewAssertionForServer(credential);
-
-    // post the transformed credential data to the server for validation
-    // and storing the public key
-    let assertionValidationResponse;
-    try {
-        assertionValidationResponse = await postNewAssertionToServer(newAssertionForServer);
-    } catch (err) {
-        console.error("Server validation of credential failed.", err);
-    }
-
-    if (assertionValidationResponse.fail) {
-        return console.error("Assertion validation failed:", assertionValidationResponse)
-    }
-    
     let login;
     try{
         login = await postLastLogin();
