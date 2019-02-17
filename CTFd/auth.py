@@ -331,31 +331,7 @@ def register_complete():
         return make_response(jsonify({'fail': 'User already exists.'}), 401)
     
 
-    #flash('Successfully registered as {}.'.format(username))
-
     return jsonify({'success': 'User successfully registered.'})
-    #return redirect(url_for('challenges.challenges_view'))
-
-    '''
-        data = cbor.loads(request.get_data())[0]
-        print("request.get_data:" ,request.get_data())
-        print(data)
-        client_data = ClientData(data['clientDataJSON'])
-        att_obj = AttestationObject(data['attestationObject'])
-        print('clientData', client_data)
-        print('AttestationObject:', att_obj)
-
-        auth_data = server.register_complete(
-            session['challenge'],
-            client_data,
-            att_obj
-        )
-
-        credentials.append(auth_data.credential_data)
-        print('REGISTERED CREDENTIAL:', auth_data.credential_data)
-        return cbor.dumps({'status': 'OK'})
-           
-    '''
 
 
 
