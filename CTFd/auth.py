@@ -161,7 +161,7 @@ def register():
         name = request.form['name']
         email = request.form['email']
         password = request.form['password']
-        
+
         name_len = len(name) == 0
         names = Teams.query.add_columns('name', 'id').filter_by(name=name).first()
         emails = Teams.query.add_columns('email', 'id').filter_by(email=email).first()
@@ -187,12 +187,11 @@ def register():
             errors.append('Pick a longer team name')
 
         '''
-
-
         if len(errors) > 0:
             print("error occured", errors)
             return render_template('register.html', errors=errors, name=request.form['name'], email=request.form['email'], password=request.form['password'])
-        else:
+        
+        if (len(password) == 0):
             with app.app_context():
                 
                 team = Teams(name, email.lower())
@@ -207,8 +206,6 @@ def register():
                 session['admin'] = team.admin
                 session['nonce'] = utils.sha512(os.urandom(10))
                 session['email'] =email.lower()
-
-
                 
 
                 rp_name = 'localhost'
@@ -226,6 +223,19 @@ def register():
                 print('make_credential_options', make_credential_options.registration_dict)
 
                 return jsonify(make_credential_options.registration_dict)
+        else:
+            with app.app_context():
+                
+                team = Teams(name, email.lower(), password)
+                db.session.add(team)
+                db.session.commit()
+                db.session.flush()
+                
+
+                session['username'] = name
+                session['id'] = team.id
+                session['admin'] = team.admin
+                session['nonce'] = utils.sha512(os.urandom(10))
 
                 if utils.can_send_mail() and utils.get_config('verify_emails'):  # Confirming users is enabled and we can send email.
                     logger = logging.getLogger('regs')
@@ -249,6 +259,7 @@ def register():
             email=request.form['email'].encode('utf-8')
         ))
         db.session.close()
+        return jsonify({"result": "password_success"})
         return redirect(url_for('challenges.challenges_view'))
     else:
         return render_template('register.html')
@@ -259,7 +270,6 @@ def register_complete():
     challenge = session['challenge']
     ukey = session['register_ukey']
     username = session['username'] 
-    email = session['email']
     registration_response = request.form
 
     trust_anchor_dir = os.path.join(
